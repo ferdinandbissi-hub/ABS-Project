@@ -9,33 +9,27 @@ export default function ProviderDashboard() {
   const [appointments, setAppointments] = useState([]);
   const [form, setForm] = useState({ title: "", description: "", price: "" });
   const [editingId, setEditingId] = useState(null);
+  const [workingHours, setWorkingHours] = useState([]);
+  const [newHour, setNewHour] = useState({ day: "", start: "", end: "" });
 
   const getToken = () => localStorage.getItem("token");
 
-  // Fetch services
+  /* ================= FETCH SERVICES ================= */
   const fetchServices = useCallback(async () => {
-    try {
-      const res = await fetch("http://localhost:5000/services", {
-        headers: { Authorization: "Bearer " + getToken() },
-      });
-      const data = await res.json();
-      setServices(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error(err);
-    }
+    const res = await fetch("http://localhost:5000/services", {
+      headers: { Authorization: "Bearer " + getToken() },
+    });
+    const data = await res.json();
+    setServices(Array.isArray(data) ? data : []);
   }, []);
 
-  // Fetch appointments
+  /* ================= FETCH APPOINTMENTS ================= */
   const fetchAppointments = useCallback(async () => {
-    try {
-      const res = await fetch("http://localhost:5000/appointments", {
-        headers: { Authorization: "Bearer " + getToken() },
-      });
-      const data = await res.json();
-      setAppointments(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error(err);
-    }
+    const res = await fetch("http://localhost:5000/appointments", {
+      headers: { Authorization: "Bearer " + getToken() },
+    });
+    const data = await res.json();
+    setAppointments(Array.isArray(data) ? data : []);
   }, []);
 
   useEffect(() => {
@@ -43,100 +37,73 @@ export default function ProviderDashboard() {
     fetchAppointments();
   }, [fetchServices, fetchAppointments]);
 
-  // Create or update service
+  /* ================= SERVICES CRUD ================= */
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title || !form.price) return alert("Title and price are required");
 
-    try {
-      if (editingId === null) {
-        // Create
-        await fetch("http://localhost:5000/services", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + getToken(),
-          },
-          body: JSON.stringify(form),
-        });
-      } else {
-        // Update
-        await fetch(`http://localhost:5000/services/${editingId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + getToken(),
-          },
-          body: JSON.stringify(form),
-        });
-      }
-      setForm({ title: "", description: "", price: "" });
-      setEditingId(null);
-      fetchServices();
-      fetchAppointments();
-    } catch (err) {
-      console.error(err);
-    }
+    const url =
+      editingId === null
+        ? "http://localhost:5000/services"
+        : `http://localhost:5000/services/${editingId}`;
+
+    await fetch(url, {
+      method: editingId === null ? "POST" : "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + getToken(),
+      },
+      body: JSON.stringify(form),
+    });
+
+    setForm({ title: "", description: "", price: "" });
+    setEditingId(null);
+    fetchServices();
+    fetchAppointments();
   };
 
   const handleEdit = (service) => {
-    setForm({ title: service.title, description: service.description, price: service.price });
+    setForm(service);
     setEditingId(service.id);
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this service?")) return;
-    try {
-      await fetch(`http://localhost:5000/services/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: "Bearer " + getToken() },
-      });
-      fetchServices();
-      fetchAppointments();
-    } catch (err) {
-      console.error(err);
-    }
+    await fetch(`http://localhost:5000/services/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: "Bearer " + getToken() },
+    });
+    fetchServices();
+    fetchAppointments();
   };
-  
-  const [workingHours, setWorkingHours] = useState([]);
 
-  // Fetch working hours
+  /* ================= WORKING HOURS ================= */
   const fetchWorkingHours = useCallback(async () => {
-    try {
-      const res = await fetch("http://localhost:5000/working-hours", {
-        headers: { Authorization: "Bearer " + getToken() },
-      });
-      const data = await res.json();
-      setWorkingHours(data.hours || []);
-    } catch (err) {
-      console.error(err);
-    }
+    const res = await fetch("http://localhost:5000/working-hours", {
+      headers: { Authorization: "Bearer " + getToken() },
+    });
+    const data = await res.json();
+    setWorkingHours(data.hours || []);
   }, []);
 
   useEffect(() => {
     fetchWorkingHours();
   }, [fetchWorkingHours]);
 
-  // eslint-disable-next-line no-unused-vars
-  const handleSaveWorkingHours = async () => {
-    try {
-      await fetch("http://localhost:5000/working-hours", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + getToken(),
-        },
-        body: JSON.stringify({ hours: workingHours }),
-      });
-      fetchWorkingHours();
-    } catch (err) {
-      console.error(err);
-    }
+  const persistWorkingHours = async (hours) => {
+    await fetch("http://localhost:5000/working-hours", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + getToken(),
+      },
+      body: JSON.stringify({ hours }),
+    });
   };
 
-  // Convert workingHours en background events
-  const workingEvents = workingHours.flatMap(h => {
-    const dayMap = { "Mon": 1, "Tue": 2, "Wed": 3, "Thu": 4, "Fri": 5, "Sat": 6, "Sun": 0 };
+  /* ================= CALENDAR EVENTS ================= */
+  const workingEvents = workingHours.map((h) => {
+    const dayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
     const start = new Date();
     start.setDate(start.getDate() - start.getDay() + dayMap[h.day]);
     const [sh, sm] = h.start.split(":").map(Number);
@@ -150,39 +117,50 @@ export default function ProviderDashboard() {
       start,
       end,
       display: "background",
-      backgroundColor: "#27ae60", // 🔹 vert plus visible
-      borderColor: "#1e8449",     // 🔹 bord plus foncé pour contraste
+      backgroundColor: "#27ae60",
+      borderColor: "#1e8449",
     };
   });
 
-  // --- HANDLE APPOINTMENT CLICK (CANCEL) ---
-  const handleEventClick = async (clickInfo) => {
-    if (!window.confirm("Do you want to cancel this appointment?")) return;
+const calendarEvents = appointments
+  .filter((a) => a.status === "booked")
+  .map((a) => {
+    const day = new Date(a.slot).toLocaleDateString("en-US", { weekday: "short" });
+    const slotTime = new Date(a.slot).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 
-    try {
-      await fetch(`http://localhost:5000/appointments/${clickInfo.event.id}`, {
-        method: "DELETE",
-        headers: { Authorization: "Bearer " + getToken() },
-      });
-      fetchAppointments();
-    } catch (err) {
-      console.error(err);
-    }
+    return {
+      id: a.id,
+      title: `Service: ${a.serviceTitle}`, // court pour le calendrier
+      start: a.slot,
+      end: a.slot,
+      backgroundColor: "#3498db",
+      borderColor: "#2980b9",
+      display: "block",
+      extendedProps: {
+        tooltip: `Day: ${day}\nTime: ${slotTime}\nService: ${a.serviceTitle}\nCustomer: ${a.customerEmail}`
+      }
+    };
+  });
+
+
+
+  const handleEventClick = async (info) => {
+    if (!window.confirm("Cancel this appointment?")) return;
+    await fetch(`http://localhost:5000/appointments/${info.event.id}`, {
+      method: "DELETE",
+      headers: { Authorization: "Bearer " + getToken() },
+    });
+    fetchAppointments();
   };
 
-  // Map appointments to FullCalendar events
-  const calendarEvents = appointments
-    .filter(a => a.status === "booked") // ne prendre que les rendez-vous actifs
-    .map(a => ({
-      id: a.id,
-      title: `${a.serviceTitle} - ${a.customerEmail}`,
-      start: a.slot,
-      end: new Date(new Date(a.slot).getTime() + 30 * 60 * 1000),
-    }));
-
-
+  /* ================= RENDER ================= */
   return (
     <div style={{ maxWidth: "900px", margin: "20px auto", padding: "20px", fontFamily: "Arial" }}>
+      <style>{`
+        .fc-day-today { background: transparent !important; }
+        .fc-timegrid-now-indicator { border-color: red !important; border-width: 2px; }
+      `}</style>
+
       <h1 style={{ textAlign: "center", color: "#2c3e50" }}>Provider Dashboard</h1>
 
       {/* Create / Edit Service */}
@@ -278,63 +256,135 @@ export default function ProviderDashboard() {
         ))}
       </section>
 
-      {/* Full Calendar */}
-      <section>
-        <h2 style={{ color: "#34495e" }}>My Schedule</h2>
-        <FullCalendar
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="timeGridWeek"
-          events={[...calendarEvents, ...workingEvents]}
-          headerToolbar={{
-            left: "prev,next today",
-            center: "title",
-            right: "dayGridMonth,timeGridWeek,timeGridDay",
-          }}
-          eventClick={handleEventClick}
-          height="auto"
-          slotMinTime="08:00:00"
-          slotMaxTime="20:00:00"
-          allDaySlot={false}
-          nowIndicator={true}
-          weekNumbers={true}
-          dayHeaderFormat={{ weekday: 'short', day: 'numeric' }}
-          slotDuration="00:30:00"
-          slotLabelInterval="01:00"
-          slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
-          eventContent={(eventInfo) => (
-            <div
-              style={{
-                fontSize: "16px",
-                fontWeight: "600",
-                color: "#2c3e50",
-                padding: "8px",
-                whiteSpace: "normal",
-                lineHeight: "1.5",
-                minHeight: "60px",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                backgroundColor: "#f9f9f9",
-                borderRadius: "5px",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-              }}
-            >
-              <strong style={{ fontSize: "18px", color: "#2980b9" }}>{eventInfo.event.title}</strong>
-              <span style={{ fontSize: "14px", color: "#34495e", marginTop: "2px" }}>
-                {new Date(eventInfo.event.start).toLocaleString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  day: '2-digit',
-                  month: 'short'
-                })}
-              </span>
-              <span style={{ fontSize: "12px", color: "#7f8c8d", marginTop: "2px" }}>
-                {eventInfo.event.extendedProps.status || ""}
-              </span>
-            </div>
-          )}
-        />
+      {/* ================= WORKING HOURS UI ================= */}
+      <section style={{ marginBottom: "40px" }}>
+        <h2 style={{ color: "#34495e" }}>Set Working Hours</h2>
+
+        <div style={{ display: "flex", gap: "10px", marginBottom: "10px", flexWrap: "wrap" }}>
+          <select
+            value={newHour.day}
+            onChange={(e) => setNewHour({ ...newHour, day: e.target.value })}
+            style={{ padding: "8px", borderRadius: "5px" }}
+          >
+            <option value="">Select Day</option>
+            {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+
+          <input
+            type="time"
+            value={newHour.start}
+            onChange={(e) => setNewHour({ ...newHour, start: e.target.value })}
+            style={{ padding: "8px", borderRadius: "5px" }}
+          />
+
+          <input
+            type="time"
+            value={newHour.end}
+            onChange={(e) => setNewHour({ ...newHour, end: e.target.value })}
+            style={{ padding: "8px", borderRadius: "5px" }}
+          />
+
+          <button
+            type="button"
+            onClick={async () => {
+              if (!newHour.day || !newHour.start || !newHour.end)
+                return alert("Fill all fields");
+
+              const updated = [...workingHours, newHour];
+              setWorkingHours(updated);
+              setNewHour({ day: "", start: "", end: "" });
+              await persistWorkingHours(updated);
+            }}
+            style={{
+              padding: "8px 12px",
+              backgroundColor: "#27ae60",
+              color: "#fff",
+              border: "none",
+              borderRadius: "5px",
+              cursor: "pointer",
+            }}
+          >
+            Add
+          </button>
+        </div>
+
+        {workingHours.length > 0 && (
+          <ul style={{ listStyle: "none", padding: 0 }}>
+            {workingHours.map((h, i) => (
+              <li
+                key={i}
+                style={{
+                  padding: "5px 10px",
+                  border: "1px solid #ccc",
+                  borderRadius: "5px",
+                  marginBottom: "5px",
+                  backgroundColor: "#ecf0f1",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                {h.day}: {h.start} - {h.end}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const updated = workingHours.filter((_, idx) => idx !== i);
+                    setWorkingHours(updated);
+                    await persistWorkingHours(updated);
+                  }}
+                  style={{
+                    backgroundColor: "#e74c3c",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "3px",
+                    padding: "2px 6px",
+                    cursor: "pointer",
+                  }}
+                >
+                  X
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
+
+      {/* ================= FULL CALENDAR ================= */}
+      <FullCalendar
+        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+        initialView="timeGridWeek"
+        events={[...calendarEvents, ...workingEvents]}
+        eventClick={handleEventClick}
+        height="auto"
+        slotMinTime="08:00:00"
+        slotMaxTime="20:00:00"
+        allDaySlot={false}
+        nowIndicator={true}
+        weekNumbers={true}
+        dayHeaderFormat={{ weekday: "short", day: "numeric" }}
+        slotDuration="00:30:00"
+        slotLabelInterval="01:00"
+        slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
+
+        eventDidMount={(info) => {
+          
+          if (info.event.backgroundColor === "#3498db") {
+            info.el.style.height = "auto";
+            info.el.style.width = "100%";         
+            info.el.style.whiteSpace = "nowwrap"; 
+            info.el.style.overflow = "hidden";
+            info.el.style.padding = "6px 8px";
+            info.el.style.fontSize = "16px";      
+            info.el.style.lineHeight = "1.4";
+            info.el.style.display = "flex";
+            info.el.style.alignItems = "center";
+            // === TOOLTIP ===
+            info.el.setAttribute("title", info.event.extendedProps.tooltip);
+          }
+        }}
+      />
     </div>
   );
 }

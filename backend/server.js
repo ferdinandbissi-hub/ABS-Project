@@ -129,6 +129,7 @@ app.put("/services/:id", auth, (req, res) => {
   );
 });
 
+// === DELETE SERVICE + cancel all related appointments
 app.delete("/services/:id", auth, (req, res) => {
   if (req.user.role !== "provider")
     return res.status(403).json({ message: "Forbidden" });
@@ -140,16 +141,34 @@ app.delete("/services/:id", auth, (req, res) => {
     function(err) {
       if (err) return res.status(500).json({ message: "Database error" });
 
+      // Mark related appointments as cancelled
       db.run(
         "UPDATE appointments SET status = 'cancelled' WHERE serviceId = ?",
         [id],
-        () => res.json({ message: "Service deleted" })
+        () => res.json({ message: "Service deleted and related appointments cancelled" })
       );
     }
   );
 });
 
 /* ================= APPOINTMENTS ================= */
+app.get("/provider-appointments/:providerEmail", auth, (req, res) => {
+  const { providerEmail } = req.params;
+
+  db.all(
+    `SELECT a.*, s.title as serviceTitle
+     FROM appointments a
+     JOIN services s ON a.serviceId = s.id
+     WHERE s.providerEmail = ?
+     AND a.status = 'booked'`,
+    [providerEmail],
+    (err, rows) => {
+      if (err) return res.status(500).json({ message: "Database error" });
+      res.json(rows);
+    }
+  );
+});
+
 app.post("/appointments", auth, (req, res) => {
   if (req.user.role !== "customer")
     return res.status(403).json({ message: "Forbidden" });
@@ -166,6 +185,7 @@ app.post("/appointments", auth, (req, res) => {
   );
 });
 
+// === DELETE APPOINTMENT (persistent)
 app.delete("/appointments/:id", auth, (req, res) => {
   const id = Number(req.params.id);
 
@@ -175,7 +195,7 @@ app.delete("/appointments/:id", auth, (req, res) => {
     function(err) {
       if (err) return res.status(500).json({ message: "Database error" });
       if (this.changes === 0) return res.status(404).json({ message: "Appointment not found" });
-      res.json({ message: "Appointment cancelled" });
+      res.json({ message: "Appointment cancelled successfully" });
     }
   );
 });
@@ -183,7 +203,11 @@ app.delete("/appointments/:id", auth, (req, res) => {
 app.get("/appointments", auth, (req, res) => {
   if (req.user.role === "provider") {
     db.all(
-      "SELECT a.*, s.title as serviceTitle FROM appointments a LEFT JOIN services s ON a.serviceId = s.id WHERE s.providerEmail = ?",
+      `SELECT a.*, s.title as serviceTitle
+       FROM appointments a
+       JOIN services s ON a.serviceId = s.id
+       WHERE s.providerEmail = ?
+       AND a.status = 'booked'`,
       [req.user.email],
       (err, rows) => {
         if (err) return res.status(500).json({ message: "Database error" });
@@ -192,7 +216,10 @@ app.get("/appointments", auth, (req, res) => {
     );
   } else {
     db.all(
-      "SELECT a.*, s.title as serviceTitle FROM appointments a LEFT JOIN services s ON a.serviceId = s.id WHERE a.customerEmail = ?",
+      `SELECT a.*, s.title as serviceTitle
+       FROM appointments a
+       LEFT JOIN services s ON a.serviceId = s.id
+       WHERE a.customerEmail = ?`,
       [req.user.email],
       (err, rows) => {
         if (err) return res.status(500).json({ message: "Database error" });
@@ -202,19 +229,27 @@ app.get("/appointments", auth, (req, res) => {
   }
 });
 
+
 /* ================= WORKING HOURS ================= */
 app.get("/working-hours", auth, (req, res) => {
-  if (req.user.role !== "provider") return res.status(403).json({ message: "Forbidden" });
+  const providerEmail =
+    req.user.role === "provider"
+      ? req.user.email
+      : req.query.providerEmail;
+
+  if (!providerEmail)
+    return res.status(400).json({ message: "Provider email required" });
 
   db.get(
     "SELECT hours FROM working_hours WHERE providerEmail = ?",
-    [req.user.email],
+    [providerEmail],
     (err, row) => {
       if (err) return res.status(500).json({ message: "Database error" });
       res.json(row ? { hours: JSON.parse(row.hours) } : { hours: [] });
     }
   );
 });
+
 
 app.post("/working-hours", auth, (req, res) => {
   if (req.user.role !== "provider") return res.status(403).json({ message: "Forbidden" });
@@ -231,48 +266,9 @@ app.post("/working-hours", auth, (req, res) => {
   );
 });
 
-/* ================= WORKING HOURS → CALENDAR EVENTS ================= */
-app.get("/working-hours-events", auth, (req, res) => {
-  const providerEmail =
-    req.user.role === "provider" ? req.user.email : req.query.providerEmail;
-
-  if (!providerEmail)
-    return res.status(400).json({ message: "Provider email required" });
-
-  db.get(
-    "SELECT hours FROM working_hours WHERE providerEmail = ?",
-    [providerEmail],
-    (err, row) => {
-      if (err) return res.status(500).json({ message: "Database error" });
-      if (!row) return res.json([]);
-
-      const events = JSON.parse(row.hours).map(h => {
-        const dayMap = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
-        const start = new Date();
-        start.setDate(start.getDate() - start.getDay() + dayMap[h.day]);
-        const [sh, sm] = h.start.split(":").map(Number);
-        start.setHours(sh, sm, 0, 0);
-        const end = new Date(start);
-        const [eh, em] = h.end.split(":").map(Number);
-        end.setHours(eh, em, 0, 0);
-
-        return {
-          start,
-          end,
-          display: "background",
-          backgroundColor: "#27ae60",
-          borderColor: "#1e8449"
-        };
-      });
-
-      res.json(events);
-    }
-  );
-});
-
 /* ================= FRONTEND ================= */
 app.use(express.static(path.join(__dirname, "frontend/build")));
-app.get("*", (req, res) => {
+app.get("/*", (req, res) => {
   res.sendFile(path.join(__dirname, "frontend/build", "index.html"));
 });
 
