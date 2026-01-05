@@ -4,6 +4,8 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 
+const API_URL = process.env.REACT_APP_API_URL || "https://abs-project-backend.onrender.com";
+
 export default function CustomerDashboard() {
   const [services, setServices] = useState([]);
   const [appointments, setAppointments] = useState([]);
@@ -16,7 +18,7 @@ export default function CustomerDashboard() {
   /* ================= FETCH SERVICES ================= */
   const fetchServices = useCallback(async () => {
     try {
-      const res = await fetch("http://localhost:5000/services", {
+      const res = await fetch(`${API_URL}/services`, {
         headers: { Authorization: "Bearer " + getToken() },
       });
       const data = await res.json();
@@ -29,7 +31,7 @@ export default function CustomerDashboard() {
   /* ================= FETCH APPOINTMENTS ================= */
   const fetchAppointments = useCallback(async () => {
     try {
-      const res = await fetch("http://localhost:5000/appointments", {
+      const res = await fetch(`${API_URL}/appointments`, {
         headers: { Authorization: "Bearer " + getToken() },
       });
       const data = await res.json();
@@ -54,7 +56,7 @@ export default function CustomerDashboard() {
     const isoSlot = new Date(slot).toISOString();
 
     try {
-      await fetch("http://localhost:5000/appointments", {
+      await fetch(`${API_URL}/appointments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -78,7 +80,7 @@ export default function CustomerDashboard() {
   /* ================= CANCEL APPOINTMENT ================= */
   const handleCancelAppointment = async (appointmentId) => {
     try {
-      await fetch(`http://localhost:5000/appointments/${appointmentId}`, {
+      await fetch(`${API_URL}/appointments/${appointmentId}`, {
         method: "DELETE",
         headers: { Authorization: "Bearer " + getToken() },
       });
@@ -109,12 +111,12 @@ export default function CustomerDashboard() {
 
     Promise.all([
       fetch(
-        `http://localhost:5000/working-hours?providerEmail=${service.providerEmail}`,
+        `${API_URL}/working-hours?providerEmail=${service.providerEmail}`,
         { headers: { Authorization: "Bearer " + getToken() } }
       ).then(res => res.json()),
 
       fetch(
-        `http://localhost:5000/provider-appointments/${service.providerEmail}`,
+        `${API_URL}/provider-appointments/${service.providerEmail}`,
         { headers: { Authorization: "Bearer " + getToken() } }
       ).then(res => res.json())
     ])
@@ -145,7 +147,7 @@ export default function CustomerDashboard() {
             start: start.toISOString(),
             end: end.toISOString(),
             display: "background",
-            backgroundColor: "#82e0aa", // plus foncé
+            backgroundColor: "#82e0aa",
             overlap: false,
           });
         });

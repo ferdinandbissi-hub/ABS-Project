@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const API_URL = process.env.REACT_APP_API_URL;
-
+const API_URL = process.env.REACT_APP_API_URL || "https://abs-project-backend.onrender.com";
 
 export default function RegisterLogin() {
   const [email, setEmail] = useState("");
