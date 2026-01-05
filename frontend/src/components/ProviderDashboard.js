@@ -105,7 +105,7 @@ export default function ProviderDashboard() {
     });
   };
 
-  /* ================= CALENDAR EVENTS ================= */
+  /* ================= CALENDAR PREP ================= */
   const workingEvents = workingHours.map((h) => {
     const dayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
     const start = new Date();
@@ -115,60 +115,34 @@ export default function ProviderDashboard() {
     const end = new Date(start);
     const [eh, em] = h.end.split(":").map(Number);
     end.setHours(eh, em, 0, 0);
-    return {
-      start,
-      end,
-      display: "background",
-      backgroundColor: "#27ae60",
-      borderColor: "#1e8449",
-    };
+    return { start, end, display: "background", backgroundColor: "#27ae60" };
   });
 
-  const calendarEvents = appointments
-    .filter((a) => a.status === "booked")
-    .map((a) => ({
-      id: a.id,
-      title: `Service: ${a.serviceTitle}(${a.price} FCFA)`,
-      start: a.slot,
-      end: a.slot,
-      backgroundColor: "#3498db",
-      borderColor: "#2980b9",
-      display: "block",
-      extendedProps: {
-        tooltip: `Service: ${a.serviceTitle}\nCustomer: ${a.customerEmail}`
-      }
-    }));
-
-  const handleEventClick = async (info) => {
-    if (!window.confirm("Cancel this appointment?")) return;
-    await fetch(`${API_URL}/appointments/${info.event.id}`, {
-      method: "DELETE",
-      headers: { Authorization: "Bearer " + getToken() },
-    });
-    fetchAppointments();
-  };
+  const calendarEvents = appointments.filter(a => a.status === "booked").map(a => ({
+    id: a.id,
+    title: `Service: ${a.serviceTitle}(${a.price} FCFA)`,
+    start: a.slot,
+    backgroundColor: "#3498db"
+  }));
 
   return (
     <div style={{ maxWidth: "900px", margin: "20px auto", padding: "20px", fontFamily: "Arial" }}>
-      <style>{`.fc-day-today { background: transparent !important; }`}</style>
-
       <h1 style={{ textAlign: "center", color: "#2c3e50" }}>Provider Dashboard</h1>
 
+      {/* CREATE/EDIT SERVICE */}
       <section style={{ marginBottom: "40px" }}>
         <h2 style={{ color: "#34495e" }}>{editingId === null ? "Create Service" : "Edit Service"}</h2>
         <form onSubmit={handleSubmit} style={{ marginBottom: "20px" }}>
-          <input type="text" placeholder="Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
-            style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "5px" }} />
-          <input type="text" placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-            style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "5px" }} />
-          <input type="number" placeholder="Price" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })}
-            style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "5px" }} />
+          <input type="text" placeholder="Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "5px" }} />
+          <input type="text" placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "5px" }} />
+          <input type="number" placeholder="Price" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "5px" }} />
           <button type="submit" style={{ padding: "10px 20px", backgroundColor: "#3498db", color: "#fff", border: "none", borderRadius: "5px", cursor: "pointer" }}>
             {editingId === null ? "Create Service" : "Update Service"}
           </button>
         </form>
       </section>
 
+      {/* SERVICES LIST */}
       <section style={{ marginBottom: "40px" }}>
         <h2 style={{ color: "#34495e" }}>Services</h2>
         {services.map(s => (
@@ -183,6 +157,7 @@ export default function ProviderDashboard() {
         ))}
       </section>
 
+      {/* WORKING HOURS SECTION (RESTAURÉ) */}
       <section style={{ marginBottom: "40px" }}>
         <h2 style={{ color: "#34495e" }}>Set Working Hours</h2>
         <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
@@ -198,27 +173,27 @@ export default function ProviderDashboard() {
             setWorkingHours(updated);
             setNewHour({ day: "", start: "", end: "" });
             await persistWorkingHours(updated);
-          }} style={{ padding: "8px 12px", backgroundColor: "#27ae60", color: "#fff", border: "none", borderRadius: "5px" }}>Add</button>
+          }} style={{ padding: "8px 12px", backgroundColor: "#27ae60", color: "#fff", border: "none", borderRadius: "5px", cursor: "pointer" }}>Add</button>
         </div>
         <ul style={{ listStyle: "none", padding: 0 }}>
           {workingHours.map((h, i) => (
-            <li key={i} style={{ marginBottom: "5px" }}>
+            <li key={i} style={{ padding: "5px", borderBottom: "1px solid #eee" }}>
               {h.day}: {h.start} - {h.end}
               <button onClick={async () => {
                 const updated = workingHours.filter((_, idx) => idx !== i);
                 setWorkingHours(updated);
                 await persistWorkingHours(updated);
-              }} style={{ marginLeft: "10px", color: "red" }}>X</button>
+              }} style={{ marginLeft: "10px", color: "red", border: "none", background: "none", cursor: "pointer" }}>X</button>
             </li>
           ))}
         </ul>
       </section>
 
+      {/* CALENDRIER 6AM - 10PM */}
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="timeGridWeek"
         events={[...calendarEvents, ...workingEvents]}
-        eventClick={handleEventClick}
         slotMinTime="06:00:00"
         slotMaxTime="22:00:00"
         height="auto"
