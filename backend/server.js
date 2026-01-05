@@ -8,11 +8,7 @@ const path = require("path");
 const db = require("./db"); // SQLite connection
 
 const app = express();
-app.use(cors({
-  origin: "https://abs-project-frontend.onrender.com", 
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+app.use(cors());
 app.use(bodyParser.json());
 
 const SECRET = process.env.JWT_SECRET || "default_secret";
@@ -21,7 +17,7 @@ const apiRouter = express.Router();
 
 
 /* ================= AUTH ================= */
-app.post("/register", (req, res) => {
+app.post("/api/register", (req, res) => {
   const { email, password, role } = req.body;
   if (!email || !password || !role)
     return res.status(400).json({ message: "All fields required" });
@@ -38,7 +34,7 @@ app.post("/register", (req, res) => {
   );
 });
 
-app.post("/login", (req, res) => {
+app.post("/api/login", (req, res) => {
   const { email, password } = req.body;
 
   db.get(
@@ -67,7 +63,7 @@ function auth(req, res, next) {
 }
 
 /* ================= SERVICES ================= */
-app.post("/services", auth, (req, res) => {
+app.post("/api/services", auth, (req, res) => {
   if (req.user.role !== "provider")
     return res.status(403).json({ message: "Forbidden" });
 
@@ -181,7 +177,7 @@ app.get("/provider-appointments/:providerEmail", auth, (req, res) => {
   );
 });
 
-app.post("/appointments", auth, (req, res) => {
+app.post("/api/appointments", auth, (req, res) => {
   if (req.user.role !== "customer")
     return res.status(403).json({ message: "Forbidden" });
 
@@ -263,7 +259,7 @@ app.get("/working-hours", auth, (req, res) => {
 });
 
 
-app.post("/working-hours", auth, (req, res) => {
+app.post("/api/working-hours", auth, (req, res) => {
   if (req.user.role !== "provider") return res.status(403).json({ message: "Forbidden" });
 
   const { hours } = req.body;
@@ -278,7 +274,7 @@ app.post("/working-hours", auth, (req, res) => {
   );
 });
 
-//app.use("/api", apiRouter);
+app.use("/api", apiRouter);
 
 /* ================= FRONTEND ================= */
 const frontendPath = path.join(__dirname, "../frontend/build");
