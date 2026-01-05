@@ -10,6 +10,7 @@ app.use(cors());
 app.use(bodyParser.json());
 
 const SECRET = "your_jwt_secret";
+const DOLLAR_TO_FCFA = 650;
 
 /* ================= AUTH ================= */
 app.post("/register", (req, res) => {
@@ -63,6 +64,8 @@ app.post("/services", auth, (req, res) => {
     return res.status(403).json({ message: "Forbidden" });
 
   const { title, description, price } = req.body;
+  const priceFCFA = price * DOLLAR_TO_FCFA;
+  
   db.run(
     "INSERT INTO services (providerEmail, title, description, price) VALUES (?, ?, ?, ?)",
     [req.user.email, title, description, price],
@@ -114,6 +117,7 @@ app.put("/services/:id", auth, (req, res) => {
 
   const id = Number(req.params.id);
   const { title, description, price } = req.body;
+  const priceFCFA = price * DOLLAR_TO_FCFA;
 
   db.run(
     "UPDATE services SET title = ?, description = ?, price = ? WHERE id = ? AND providerEmail = ?",
