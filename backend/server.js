@@ -278,10 +278,10 @@ app.post("/working-hours", auth, (req, res) => {
   );
 });
 
-app.use("/api", apiRouter);
+//app.use("/api", apiRouter);
 
 /* ================= FRONTEND ================= */
-const frontendPath = path.join(__dirname, "..", "frontend", "build");
+const frontendPath = path.join(__dirname, "../frontend/build");
 
 app.use(express.static(frontendPath));
 
