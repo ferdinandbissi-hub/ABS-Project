@@ -4,8 +4,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 
-// On utilise l'URL absolue de ton backend Render pour être sûr à 100%
-const API_URL = "https://abs-project.onrender.com/api";
+const API_URL = "/api";
 
 export default function ProviderDashboard() {
   const [services, setServices] = useState([]);
@@ -17,7 +16,7 @@ export default function ProviderDashboard() {
 
   const getToken = () => localStorage.getItem("token");
 
-  /* ================= RÉCUPÉRATION DES DONNÉES ================= */
+  /* ================= FETCH DATA ================= */
   const fetchServices = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/services`, {
@@ -54,10 +53,10 @@ export default function ProviderDashboard() {
     fetchWorkingHours();
   }, [fetchServices, fetchAppointments, fetchWorkingHours]);
 
-  /* ================= GESTION DES SERVICES (CRUD) ================= */
+  /* ================= SERVICES CRUD ================= */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.title || !form.price) return alert("Le titre et le prix sont requis");
+    if (!form.title || !form.price) return alert("Title and price are required");
 
     const url = editingId === null ? `${API_URL}/services` : `${API_URL}/services/${editingId}`;
     const method = editingId === null ? "POST" : "PUT";
@@ -74,7 +73,7 @@ export default function ProviderDashboard() {
 
       if (!res.ok) {
         const errorData = await res.json();
-        alert("Erreur serveur: " + (errorData.message || res.statusText));
+        alert("Server Error: " + (errorData.message || res.statusText));
         return;
       }
 
@@ -83,7 +82,7 @@ export default function ProviderDashboard() {
       fetchServices();
     } catch (err) {
       console.error("Submit error:", err);
-      alert("Erreur réseau: Impossible de contacter le serveur à l'adresse " + API_URL);
+      alert("Network error. Please try again.");
     }
   };
 
@@ -93,17 +92,17 @@ export default function ProviderDashboard() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Supprimer ce service ?")) return;
+    if (!window.confirm("Delete this service?")) return;
     try {
       await fetch(`${API_URL}/services/${id}`, {
         method: "DELETE",
         headers: { Authorization: "Bearer " + getToken() },
       });
       fetchServices();
-    } catch (err) { alert("Erreur lors de la suppression"); }
+    } catch (err) { alert("Error deleting service"); }
   };
 
-  /* ================= HEURES DE TRAVAIL ================= */
+  /* ================= WORKING HOURS ================= */
   const persistWorkingHours = async (hours) => {
     try {
       await fetch(`${API_URL}/working-hours`, {
@@ -117,7 +116,7 @@ export default function ProviderDashboard() {
     } catch (err) { console.error("Save error", err); }
   };
 
-  /* ================= PRÉPARATION CALENDRIER ================= */
+  /* ================= CALENDAR PREP ================= */
   const workingEvents = workingHours.map((h) => {
     const dayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
     const start = new Date();
@@ -141,49 +140,50 @@ export default function ProviderDashboard() {
     <div style={{ maxWidth: "900px", margin: "20px auto", padding: "20px", fontFamily: "Arial" }}>
       <h1 style={{ textAlign: "center", color: "#2c3e50" }}>Provider Dashboard</h1>
 
-      {/* FORMULAIRE SERVICES */}
+      {/* SERVICE FORM */}
       <section style={{ marginBottom: "40px", padding: "20px", background: "#f9f9f9", borderRadius: "8px" }}>
-        <h2>{editingId === null ? "Créer un Service" : "Modifier le Service"}</h2>
+        <h2>{editingId === null ? "Create Service" : "Edit Service"}</h2>
         <form onSubmit={handleSubmit}>
-          <input type="text" placeholder="Titre" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} style={{ width: "100%", padding: "10px", marginBottom: "10px" }} />
+          <input type="text" placeholder="Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} style={{ width: "100%", padding: "10px", marginBottom: "10px" }} />
           <input type="text" placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} style={{ width: "100%", padding: "10px", marginBottom: "10px" }} />
-          <input type="number" placeholder="Prix" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} style={{ width: "100%", padding: "10px", marginBottom: "10px" }} />
+          <input type="number" placeholder="Price" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} style={{ width: "100%", padding: "10px", marginBottom: "10px" }} />
           <button type="submit" style={{ padding: "10px 20px", backgroundColor: "#3498db", color: "#fff", border: "none", borderRadius: "5px", cursor: "pointer" }}>
-            {editingId === null ? "Créer" : "Mettre à jour"}
+            {editingId === null ? "Create" : "Update"}
           </button>
         </form>
       </section>
 
-      {/* LISTE SERVICES */}
+      {/* SERVICES LIST */}
       <section style={{ marginBottom: "40px" }}>
+        <h2>Services</h2>
         {services.map(s => (
           <div key={s.id} style={{ border: "1px solid #ccc", padding: "15px", marginBottom: "10px", borderRadius: "5px", backgroundColor: "#ecf0f1" }}>
             <strong>{s.title}</strong> - {s.price} FCFA
             <div style={{ marginTop: "10px" }}>
-              <button onClick={() => handleEdit(s)} style={{ marginRight: "10px" }}>Modifier</button>
-              <button onClick={() => handleDelete(s.id)} style={{ color: "red" }}>Supprimer</button>
+              <button onClick={() => handleEdit(s)} style={{ marginRight: "10px" }}>Edit</button>
+              <button onClick={() => handleDelete(s.id)} style={{ color: "red" }}>Delete</button>
             </div>
           </div>
         ))}
       </section>
 
-      {/* GESTION WORKING HOURS */}
+      {/* WORKING HOURS MANAGEMENT */}
       <section style={{ marginBottom: "40px" }}>
-        <h2>Horaires de travail</h2>
+        <h2>Working Hours</h2>
         <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
           <select value={newHour.day} onChange={e => setNewHour({ ...newHour, day: e.target.value })} style={{ padding: "8px" }}>
-            <option value="">Jour</option>
+            <option value="">Day</option>
             {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d => <option key={d} value={d}>{d}</option>)}
           </select>
           <input type="time" value={newHour.start} onChange={e => setNewHour({ ...newHour, start: e.target.value })} style={{ padding: "8px" }} />
           <input type="time" value={newHour.end} onChange={e => setNewHour({ ...newHour, end: e.target.value })} style={{ padding: "8px" }} />
           <button type="button" onClick={async () => {
-            if (!newHour.day || !newHour.start || !newHour.end) return alert("Remplissez tous les champs");
+            if (!newHour.day || !newHour.start || !newHour.end) return alert("Fill all fields");
             const updated = [...workingHours, newHour];
             setWorkingHours(updated);
             setNewHour({ day: "", start: "", end: "" });
             await persistWorkingHours(updated);
-          }} style={{ padding: "8px 12px", backgroundColor: "#27ae60", color: "#fff", border: "none", borderRadius: "5px" }}>Ajouter</button>
+          }} style={{ padding: "8px 12px", backgroundColor: "#27ae60", color: "#fff", border: "none", borderRadius: "5px" }}>Add</button>
         </div>
         <ul>
           {workingHours.map((h, i) => (
@@ -199,7 +199,7 @@ export default function ProviderDashboard() {
         </ul>
       </section>
 
-      {/* CALENDRIER 6AM - 10PM */}
+      {/* CALENDAR 6AM - 10PM */}
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="timeGridWeek"
