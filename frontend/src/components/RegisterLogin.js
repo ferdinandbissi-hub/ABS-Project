@@ -20,10 +20,10 @@ export default function RegisterLogin() {
       });
 
       const data = await res.json();
-      console.log(res.status, data); 
+      console.log("HTTP status:", res.status, "Response:", data); 
 
       if (!res.ok) {
-        alert(data.message || "Something went wrong");
+        alert(data.message || `Error ${res.status}`);
         return;
       }
 
