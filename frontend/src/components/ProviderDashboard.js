@@ -4,7 +4,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 
-const API_URL = process.env.REACT_APP_API_URL || "https://abs-project-backend.onrender.com";
+const API_URL = "/api";
 
 export default function ProviderDashboard() {
   const [services, setServices] = useState([]);
