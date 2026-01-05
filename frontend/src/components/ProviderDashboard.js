@@ -4,6 +4,8 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 
+//const DOLLAR_TO_FCFA = 650;
+
 export default function ProviderDashboard() {
   const [services, setServices] = useState([]);
   const [appointments, setAppointments] = useState([]);
@@ -130,7 +132,7 @@ const calendarEvents = appointments
 
     return {
       id: a.id,
-      title: `Service: ${a.serviceTitle}`, // court pour le calendrier
+      title: `Service: ${a.serviceTitle}(${a.price} FCFA)`, // court pour le calendrier
       start: a.slot,
       end: a.slot,
       backgroundColor: "#3498db",
@@ -222,7 +224,9 @@ const calendarEvents = appointments
           >
             <h3 style={{ margin: "0 0 5px 0" }}>{s.title}</h3>
             <p style={{ margin: "0 0 5px 0" }}>{s.description}</p>
-            <p style={{ margin: 0, fontWeight: "bold" }}>${s.price}</p>
+            <p style={{ margin: 0, fontWeight: "bold" }}>
+              {s.price} FCFA
+            </p>
             <div style={{ marginTop: "10px" }}>
               <button
                 onClick={() => handleEdit(s)}
