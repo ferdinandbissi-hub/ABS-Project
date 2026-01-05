@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+const API_URL = process.env.REACT_APP_API_URL;
+
+
 export default function RegisterLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -11,7 +14,7 @@ export default function RegisterLogin() {
     const payload = endpoint === "register" ? { email, password, role } : { email, password };
 
     try {
-      const res = await fetch(`http://localhost:5000/${endpoint}`, {
+      const res = await fetch(`${API_URL}/${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
