@@ -151,18 +151,10 @@ app.post("/api/working-hours", auth, (req, res) => {
 });
 
 /* ================= APPOINTMENTS ================= */
-/* ================= APPOINTMENTS ================= */
 app.get("/api/appointments", auth, (req, res) => {
-  // On ajoute s.price dans la sélection SQL pour que le frontend le reçoive
   const query = req.user.role === "provider"
-    ? `SELECT a.*, s.title as serviceTitle, s.price 
-       FROM appointments a 
-       JOIN services s ON a.serviceId = s.id 
-       WHERE s.providerEmail = ? AND a.status = 'booked'`
-    : `SELECT a.*, s.title as serviceTitle, s.price 
-       FROM appointments a 
-       LEFT JOIN services s ON a.serviceId = s.id 
-       WHERE a.customerEmail = ?`;
+    ? `SELECT a.*, s.title as serviceTitle FROM appointments a JOIN services s ON a.serviceId = s.id WHERE s.providerEmail = ? AND a.status = 'booked'`
+    : `SELECT a.*, s.title as serviceTitle FROM appointments a LEFT JOIN services s ON a.serviceId = s.id WHERE a.customerEmail = ?`;
 
   db.all(query, [req.user.email], (err, rows) => {
     if (err) return res.status(500).json({ message: "Database error" });
