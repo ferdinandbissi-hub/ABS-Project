@@ -81,6 +81,7 @@ export default function ProviderDashboard() {
       setEditingId(null);
       fetchServices();
     } catch (err) {
+      console.error("Submit error:", err);
       alert("Network error. Please try again.");
     }
   };
@@ -130,39 +131,22 @@ export default function ProviderDashboard() {
 
   const calendarEvents = appointments.filter(a => a.status === "booked").map(a => ({
     id: a.id,
-    title: `${a.serviceTitle}`, 
+    title: `${a.serviceTitle} (${a.price} FCFA)`,
     start: a.slot,
-    backgroundColor: "#3498db",
-    extendedProps: {
-      fullInfo: `Service: ${a.serviceTitle}\nPrice: ${a.price || 'N/A'} FCFA\nCustomer: ${a.customerEmail}\nSlot: ${new Date(a.slot).toLocaleString()}`
-    }
+    backgroundColor: "#3498db"
   }));
-
-  const handleEventClick = async (info) => {
-    if (!window.confirm("Cancel this appointment?")) return;
-    await fetch(`${API_URL}/appointments/${info.event.id}`, {
-      method: "DELETE",
-      headers: { Authorization: "Bearer " + getToken() },
-    });
-    fetchAppointments();
-  };
 
   return (
     <div style={{ maxWidth: "900px", margin: "20px auto", padding: "20px", fontFamily: "Arial" }}>
-      <style>{`
-        .fc-day-today { background: transparent !important; }
-        .fc-timegrid-now-indicator { border-color: red !important; border-width: 2px; }
-      `}</style>
-
       <h1 style={{ textAlign: "center", color: "#2c3e50" }}>Provider Dashboard</h1>
 
       {/* SERVICE FORM */}
       <section style={{ marginBottom: "40px", padding: "20px", background: "#f9f9f9", borderRadius: "8px" }}>
         <h2>{editingId === null ? "Create Service" : "Edit Service"}</h2>
         <form onSubmit={handleSubmit}>
-          <input type="text" placeholder="Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "5px" }} />
-          <input type="text" placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "5px" }} />
-          <input type="number" placeholder="Price" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "5px" }} />
+          <input type="text" placeholder="Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} style={{ width: "100%", padding: "10px", marginBottom: "10px" }} />
+          <input type="text" placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} style={{ width: "100%", padding: "10px", marginBottom: "10px" }} />
+          <input type="number" placeholder="Price" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} style={{ width: "100%", padding: "10px", marginBottom: "10px" }} />
           <button type="submit" style={{ padding: "10px 20px", backgroundColor: "#3498db", color: "#fff", border: "none", borderRadius: "5px", cursor: "pointer" }}>
             {editingId === null ? "Create" : "Update"}
           </button>
@@ -199,11 +183,11 @@ export default function ProviderDashboard() {
             setWorkingHours(updated);
             setNewHour({ day: "", start: "", end: "" });
             await persistWorkingHours(updated);
-          }} style={{ padding: "8px 12px", backgroundColor: "#27ae60", color: "#fff", border: "none", borderRadius: "5px", cursor: "pointer" }}>Add</button>
+          }} style={{ padding: "8px 12px", backgroundColor: "#27ae60", color: "#fff", border: "none", borderRadius: "5px" }}>Add</button>
         </div>
-        <ul style={{ listStyle: "none", padding: 0 }}>
+        <ul>
           {workingHours.map((h, i) => (
-            <li key={i} style={{ padding: "5px", borderBottom: "1px solid #eee" }}>
+            <li key={i}>
               {h.day}: {h.start} - {h.end}
               <button onClick={async () => {
                 const updated = workingHours.filter((_, idx) => idx !== i);
@@ -215,21 +199,15 @@ export default function ProviderDashboard() {
         </ul>
       </section>
 
+      {/* CALENDAR 6AM - 10PM */}
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="timeGridWeek"
         events={[...calendarEvents, ...workingEvents]}
-        eventClick={handleEventClick}
         slotMinTime="06:00:00"
         slotMaxTime="22:00:00"
         height="auto"
         allDaySlot={false}
-        nowIndicator={true}
-        eventDidMount={(info) => {
-          if (info.event.extendedProps.fullInfo) {
-            info.el.title = info.event.extendedProps.fullInfo;
-          }
-        }}
       />
     </div>
   );
