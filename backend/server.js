@@ -17,6 +17,8 @@ app.use(bodyParser.json());
 
 const SECRET = process.env.JWT_SECRET || "default_secret";
 const DOLLAR_TO_FCFA = Number(process.env.DOLLAR_TO_FCFA) || 650;
+const apiRouter = express.Router();
+
 
 /* ================= AUTH ================= */
 app.post("/register", (req, res) => {
