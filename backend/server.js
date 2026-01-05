@@ -8,7 +8,11 @@ const path = require("path");
 const db = require("./db"); // SQLite connection
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: "https://abs-project-frontend.onrender.com", 
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 app.use(bodyParser.json());
 
 const SECRET = process.env.JWT_SECRET || "default_secret";
@@ -272,10 +276,12 @@ app.post("/working-hours", auth, (req, res) => {
   );
 });
 
+app.use("/api", apiRouter);
+
 /* ================= FRONTEND ================= */
-app.use(express.static(path.join(__dirname, "frontend/build")));
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "frontend/build", "index.html"));
+app.use(express.static(path.join(__dirname, "..frontend/build")));
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "..frontend/build", "index.html"));
 });
 
 /* ================= START SERVER ================= */
