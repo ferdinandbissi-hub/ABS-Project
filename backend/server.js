@@ -63,7 +63,7 @@ function auth(req, res, next) {
 }
 
 /* ================= SERVICES ================= */
-app.post("/api/services", auth, (req, res) => {
+apiRouter.post("/api/services", auth, (req, res) => {
   if (req.user.role !== "provider")
     return res.status(403).json({ message: "Forbidden" });
 
