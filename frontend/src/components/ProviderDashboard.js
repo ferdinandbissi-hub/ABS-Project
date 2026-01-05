@@ -16,30 +16,36 @@ export default function ProviderDashboard() {
 
   const getToken = () => localStorage.getItem("token");
 
+  /* ================= FETCH DATA ================= */
   const fetchServices = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_URL}/services`, {
-        headers: { Authorization: "Bearer " + getToken() },
-      });
-      const data = await res.json();
-      setServices(Array.isArray(data) ? data : []);
-    } catch (e) { console.error("Error fetching services:", e); }
+    const res = await fetch(`${API_URL}/services`, {
+      headers: { Authorization: "Bearer " + getToken() },
+    });
+    const data = await res.json();
+    setServices(Array.isArray(data) ? data : []);
   }, []);
 
   const fetchAppointments = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_URL}/appointments`, {
-        headers: { Authorization: "Bearer " + getToken() },
-      });
-      const data = await res.json();
-      setAppointments(Array.isArray(data) ? data : []);
-    } catch (e) { console.error("Error fetching appointments:", e); }
+    const res = await fetch(`${API_URL}/appointments`, {
+      headers: { Authorization: "Bearer " + getToken() },
+    });
+    const data = await res.json();
+    setAppointments(Array.isArray(data) ? data : []);
+  }, []);
+
+  const fetchWorkingHours = useCallback(async () => {
+    const res = await fetch(`${API_URL}/working-hours`, {
+      headers: { Authorization: "Bearer " + getToken() },
+    });
+    const data = await res.json();
+    setWorkingHours(data.hours || []);
   }, []);
 
   useEffect(() => {
     fetchServices();
     fetchAppointments();
-  }, [fetchServices, fetchAppointments]);
+    fetchWorkingHours();
+  }, [fetchServices, fetchAppointments, fetchWorkingHours]);
 
   /* ================= SERVICES CRUD ================= */
   const handleSubmit = async (e) => {
@@ -59,20 +65,17 @@ export default function ProviderDashboard() {
         body: JSON.stringify(form),
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        alert("Server says: " + (data.message || "Unknown error"));
+        const errorData = await res.json();
+        alert(errorData.message || "Error saving service");
         return;
       }
 
       setForm({ title: "", description: "", price: "" });
       setEditingId(null);
       fetchServices();
-    } catch (error) {
-      // Si on arrive ici, c'est que le serveur n'a même pas répondu (URL erronée ou crash)
-      console.error("Submission error:", error);
-      alert("Network error: Cannot reach the server. Check if the URL /api/services exists.");
+    } catch (err) {
+      alert("Network error. Please try again.");
     }
   };
 
@@ -83,44 +86,26 @@ export default function ProviderDashboard() {
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this service?")) return;
-    try {
-      const res = await fetch(`${API_URL}/services/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: "Bearer " + getToken() },
-      });
-      if (res.ok) fetchServices();
-    } catch (e) { alert("Network error during delete"); }
+    await fetch(`${API_URL}/services/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: "Bearer " + getToken() },
+    });
+    fetchServices();
   };
 
   /* ================= WORKING HOURS ================= */
-  const fetchWorkingHours = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_URL}/working-hours`, {
-        headers: { Authorization: "Bearer " + getToken() },
-      });
-      const data = await res.json();
-      setWorkingHours(data.hours || []);
-    } catch (e) { console.error(e); }
-  }, []);
-
-  useEffect(() => {
-    fetchWorkingHours();
-  }, [fetchWorkingHours]);
-
   const persistWorkingHours = async (hours) => {
-    try {
-      await fetch(`${API_URL}/working-hours`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + getToken(),
-        },
-        body: JSON.stringify({ hours }),
-      });
-    } catch (e) { console.error(e); }
+    await fetch(`${API_URL}/working-hours`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + getToken(),
+      },
+      body: JSON.stringify({ hours }),
+    });
   };
 
-  /* ================= CALENDAR SETTINGS ================= */
+  /* ================= CALENDAR EVENTS ================= */
   const workingEvents = workingHours.map((h) => {
     const dayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
     const start = new Date();
@@ -130,58 +115,114 @@ export default function ProviderDashboard() {
     const end = new Date(start);
     const [eh, em] = h.end.split(":").map(Number);
     end.setHours(eh, em, 0, 0);
-    return { start, end, display: "background", backgroundColor: "#27ae60" };
+    return {
+      start,
+      end,
+      display: "background",
+      backgroundColor: "#27ae60",
+      borderColor: "#1e8449",
+    };
   });
 
-  const calendarEvents = appointments.filter(a => a.status === "booked").map(a => ({
-    id: a.id,
-    title: `${a.serviceTitle} (${a.price} FCFA)`,
-    start: a.slot,
-    backgroundColor: "#3498db"
-  }));
+  const calendarEvents = appointments
+    .filter((a) => a.status === "booked")
+    .map((a) => ({
+      id: a.id,
+      title: `Service: ${a.serviceTitle}(${a.price} FCFA)`,
+      start: a.slot,
+      end: a.slot,
+      backgroundColor: "#3498db",
+      borderColor: "#2980b9",
+      display: "block",
+      extendedProps: {
+        tooltip: `Service: ${a.serviceTitle}\nCustomer: ${a.customerEmail}`
+      }
+    }));
+
+  const handleEventClick = async (info) => {
+    if (!window.confirm("Cancel this appointment?")) return;
+    await fetch(`${API_URL}/appointments/${info.event.id}`, {
+      method: "DELETE",
+      headers: { Authorization: "Bearer " + getToken() },
+    });
+    fetchAppointments();
+  };
 
   return (
     <div style={{ maxWidth: "900px", margin: "20px auto", padding: "20px", fontFamily: "Arial" }}>
+      <style>{`.fc-day-today { background: transparent !important; }`}</style>
+
       <h1 style={{ textAlign: "center", color: "#2c3e50" }}>Provider Dashboard</h1>
 
-      {/* Formulaire Service (Original Style) */}
-      <section style={{ marginBottom: "40px", padding: "20px", background: "#f9f9f9", borderRadius: "8px" }}>
-        <h2>{editingId === null ? "Create Service" : "Edit Service"}</h2>
-        <form onSubmit={handleSubmit}>
-          <input type="text" placeholder="Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} style={{ width: "100%", padding: "10px", marginBottom: "10px" }} />
-          <input type="text" placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} style={{ width: "100%", padding: "10px", marginBottom: "10px" }} />
-          <input type="number" placeholder="Price" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} style={{ width: "100%", padding: "10px", marginBottom: "10px" }} />
-          <button type="submit" style={{ padding: "10px 20px", backgroundColor: "#3498db", color: "#fff", border: "none", cursor: "pointer", borderRadius: "5px" }}>
+      <section style={{ marginBottom: "40px" }}>
+        <h2 style={{ color: "#34495e" }}>{editingId === null ? "Create Service" : "Edit Service"}</h2>
+        <form onSubmit={handleSubmit} style={{ marginBottom: "20px" }}>
+          <input type="text" placeholder="Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
+            style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "5px" }} />
+          <input type="text" placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
+            style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "5px" }} />
+          <input type="number" placeholder="Price" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })}
+            style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "5px" }} />
+          <button type="submit" style={{ padding: "10px 20px", backgroundColor: "#3498db", color: "#fff", border: "none", borderRadius: "5px", cursor: "pointer" }}>
             {editingId === null ? "Create Service" : "Update Service"}
           </button>
-          {editingId && <button type="button" onClick={() => {setEditingId(null); setForm({title:"", description:"", price:""})}} style={{marginLeft: "10px"}}>Cancel</button>}
         </form>
       </section>
 
-      {/* Liste des Services */}
       <section style={{ marginBottom: "40px" }}>
+        <h2 style={{ color: "#34495e" }}>Services</h2>
         {services.map(s => (
           <div key={s.id} style={{ border: "1px solid #ccc", padding: "15px", marginBottom: "10px", borderRadius: "5px", backgroundColor: "#ecf0f1" }}>
-            <strong>{s.title}</strong> - {s.price} FCFA
-            <div style={{marginTop: "5px"}}>
-              <button onClick={() => handleEdit(s)} style={{marginRight: "5px"}}>Edit</button>
-              <button onClick={() => handleDelete(s.id)} style={{color: "red"}}>Delete</button>
+            <h3 style={{ margin: "0 0 5px 0" }}>{s.title}</h3>
+            <p style={{ margin: 0, fontWeight: "bold" }}>{s.price} FCFA</p>
+            <div style={{ marginTop: "10px" }}>
+              <button onClick={() => handleEdit(s)} style={{ marginRight: "10px" }}>Edit</button>
+              <button onClick={() => handleDelete(s.id)} style={{ color: "red" }}>Delete</button>
             </div>
           </div>
         ))}
       </section>
 
-      {/* Calendrier 6am - 10pm */}
-      <h2 style={{ color: "#34495e" }}>Schedule</h2>
+      <section style={{ marginBottom: "40px" }}>
+        <h2 style={{ color: "#34495e" }}>Set Working Hours</h2>
+        <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+          <select value={newHour.day} onChange={e => setNewHour({ ...newHour, day: e.target.value })} style={{ padding: "8px" }}>
+            <option value="">Select Day</option>
+            {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+          <input type="time" value={newHour.start} onChange={e => setNewHour({ ...newHour, start: e.target.value })} style={{ padding: "8px" }} />
+          <input type="time" value={newHour.end} onChange={e => setNewHour({ ...newHour, end: e.target.value })} style={{ padding: "8px" }} />
+          <button type="button" onClick={async () => {
+            if (!newHour.day || !newHour.start || !newHour.end) return alert("Fill all fields");
+            const updated = [...workingHours, newHour];
+            setWorkingHours(updated);
+            setNewHour({ day: "", start: "", end: "" });
+            await persistWorkingHours(updated);
+          }} style={{ padding: "8px 12px", backgroundColor: "#27ae60", color: "#fff", border: "none", borderRadius: "5px" }}>Add</button>
+        </div>
+        <ul style={{ listStyle: "none", padding: 0 }}>
+          {workingHours.map((h, i) => (
+            <li key={i} style={{ marginBottom: "5px" }}>
+              {h.day}: {h.start} - {h.end}
+              <button onClick={async () => {
+                const updated = workingHours.filter((_, idx) => idx !== i);
+                setWorkingHours(updated);
+                await persistWorkingHours(updated);
+              }} style={{ marginLeft: "10px", color: "red" }}>X</button>
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="timeGridWeek"
         events={[...calendarEvents, ...workingEvents]}
-        slotMinTime="06:00:00" 
-        slotMaxTime="22:00:00" 
+        eventClick={handleEventClick}
+        slotMinTime="06:00:00"
+        slotMaxTime="22:00:00"
         height="auto"
         allDaySlot={false}
-        nowIndicator={true}
       />
     </div>
   );
