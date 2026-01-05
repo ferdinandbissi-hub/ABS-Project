@@ -49,19 +49,29 @@ export default function ProviderDashboard() {
         ? `${API_URL}/services`
         : `${API_URL}/services/${editingId}`;
 
-    await fetch(url, {
-      method: editingId === null ? "POST" : "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + getToken(),
-      },
-      body: JSON.stringify(form),
-    });
+    try {
+      const res = await fetch(url, {
+        method: editingId === null ? "POST" : "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + getToken(),
+        },
+        body: JSON.stringify(form),
+      });
 
-    setForm({ title: "", description: "", price: "" });
-    setEditingId(null);
-    fetchServices();
-    fetchAppointments();
+      if (!res.ok) {
+        const errorData = await res.json();
+        return alert(errorData.message || "Error saving service");
+      }
+
+      setForm({ title: "", description: "", price: "" });
+      setEditingId(null);
+      fetchServices();
+      fetchAppointments();
+    } catch (err) {
+      console.error("Network error:", err);
+      alert("Network error. Please try again.");
+    }
   };
 
   const handleEdit = (service) => {
@@ -71,12 +81,24 @@ export default function ProviderDashboard() {
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this service?")) return;
-    await fetch(`${API_URL}/services/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: "Bearer " + getToken() },
-    });
-    fetchServices();
-    fetchAppointments();
+
+    try {
+      const res = await fetch(`${API_URL}/services/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: "Bearer " + getToken() },
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        return alert(errorData.message || "Error deleting service");
+      }
+
+      fetchServices();
+      fetchAppointments();
+    } catch (err) {
+      console.error("Network error:", err);
+      alert("Network error. Please try again.");
+    }
   };
 
   /* ================= WORKING HOURS ================= */
@@ -195,6 +217,7 @@ export default function ProviderDashboard() {
         ))}
       </section>
 
+      {/* Working hours section */}
       <section style={{ marginBottom: "40px" }}>
         <h2 style={{ color: "#34495e" }}>Set Working Hours</h2>
         <div style={{ display: "flex", gap: "10px", marginBottom: "10px", flexWrap: "wrap" }}>
