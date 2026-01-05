@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
@@ -9,8 +11,8 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-const SECRET = "your_jwt_secret";
-const DOLLAR_TO_FCFA = 650;
+const SECRET = process.env.JWT_SECRET || "default_secret";
+const DOLLAR_TO_FCFA = Number(process.env.DOLLAR_TO_FCFA) || 650;
 
 /* ================= AUTH ================= */
 app.post("/register", (req, res) => {
