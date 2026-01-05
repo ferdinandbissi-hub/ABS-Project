@@ -281,10 +281,14 @@ app.post("/working-hours", auth, (req, res) => {
 app.use("/api", apiRouter);
 
 /* ================= FRONTEND ================= */
-app.use(express.static(path.join(__dirname, "..frontend/build")));
+const frontendPath = path.join(__dirname, "..", "frontend", "build");
+
+app.use(express.static(frontendPath));
+
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "..frontend/build", "index.html"));
+  res.sendFile(path.join(frontendPath, "index.html"));
 });
+
 
 /* ================= START SERVER ================= */
 const PORT = process.env.PORT || 5000;
