@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const API_URL = "/api";
+const API_URL = process.env.REACT_APP_API_URL || "https://abs-project-backend.onrender.com";
 
 export default function RegisterLogin() {
   const [email, setEmail] = useState("");
@@ -20,10 +20,10 @@ export default function RegisterLogin() {
       });
 
       const data = await res.json();
-      console.log("HTTP status:", res.status, "Response:", data); 
+      console.log(data); 
 
       if (!res.ok) {
-        alert(data.message || `Error ${res.status}`);
+        alert(data.message || "Error");
         return;
       }
 
