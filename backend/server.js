@@ -8,7 +8,18 @@ const path = require("path");
 const db = require("./db"); // SQLite connection
 
 const app = express();
-app.use(cors());
+const allowedOrigins = [
+  "http://localhost:3000",
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
+app.use(cors({
+  origin: allowedOrigins,
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+
+
 app.use(bodyParser.json());
 
 const SECRET = process.env.JWT_SECRET || "default_secret";
@@ -158,8 +169,9 @@ app.delete("/services/:id", auth, (req, res) => {
 });
 
 /* ================= APPOINTMENTS ================= */
-app.get("/provider-appointments/:providerEmail", auth, (req, res) => {
-  const { providerEmail } = req.params;
+app.get("/provider-appointments", auth, (req, res) => {
+  if (req.user.role !== "provider")
+    return res.status(403).json({ message: "Forbidden" });
 
   db.all(
     `SELECT a.*, s.title as serviceTitle
@@ -167,13 +179,14 @@ app.get("/provider-appointments/:providerEmail", auth, (req, res) => {
      JOIN services s ON a.serviceId = s.id
      WHERE s.providerEmail = ?
      AND a.status = 'booked'`,
-    [providerEmail],
+    [req.user.email],
     (err, rows) => {
       if (err) return res.status(500).json({ message: "Database error" });
       res.json(rows);
     }
   );
 });
+
 
 app.post("/appointments", auth, (req, res) => {
   if (req.user.role !== "customer")
@@ -270,12 +283,6 @@ app.post("/working-hours", auth, (req, res) => {
       res.json({ message: "Working hours saved successfully" });
     }
   );
-});
-
-/* ================= FRONTEND ================= */
-app.use(express.static(path.join(__dirname, "frontend/build")));
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "frontend/build", "index.html"));
 });
 
 /* ================= START SERVER ================= */
