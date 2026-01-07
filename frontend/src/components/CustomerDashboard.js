@@ -116,7 +116,7 @@ export default function CustomerDashboard() {
       ).then(res => res.json()),
 
       fetch(
-        `${API_URL}/provider-appointments/${service.providerEmail}`,
+        `${API_URL}/provider-appointments`,
         { headers: { Authorization: "Bearer " + getToken() } }
       ).then(res => res.json())
     ])
